@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>4-Frame Viewer</title>
+<style>
+  :root {
+    --left-width: 50%;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Toolbar */
+  #toolbar {
+    flex: 0 0 auto;
+    background: #222;
+    color: #fff;
+    padding: 6px 10px;
+    display: flex;
+    align-items: center;
+  }
+  #toggle-panel {
+    background: #444;
+    color: #fff;
+    border: 1px solid #666;
+    border-radius: 4px;
+    padding: 4px 10px;
+    cursor: pointer;
+  }
+  #toggle-panel:hover { background: #555; }
+
+  /* Settings panel */
+  #settings-panel {
+    flex: 0 0 auto;
+    background: #f2f2f2;
+    border-bottom: 1px solid #ccc;
+    padding: 10px;
+    display: none;
+  }
+  #settings-panel.visible { display: block; }
+  .frame-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .frame-row label {
+    width: 60px;
+    font-size: 13px;
+  }
+  .frame-row input[type="url"] {
+    flex: 1;
+    padding: 5px 8px;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+  }
+  .frame-row button {
+    padding: 5px 12px;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+  }
+  .frame-row button:hover { background: #e6e6e6; }
+
+  /* Main grid: left column | splitter | right column */
+  #main-grid {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: var(--left-width) 6px 1fr;
+    min-height: 0;
+  }
+  #left-column {
+    display: grid;
+    grid-template-rows: 1fr 1fr 1fr;
+    min-height: 0;
+  }
+  #left-column iframe:not(:last-child) {
+    border-bottom: 2px solid #ccc;
+  }
+  #splitter {
+    cursor: col-resize;
+    background: #ccc;
+  }
+  #splitter:hover { background: #999; }
+  iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+  }
+</style>
+</head>
+<body>
+
+  <div id="toolbar">
+    <button id="toggle-panel" type="button">URLs bearbeiten</button>
+  </div>
+
+  <div id="settings-panel">
+    <div class="frame-row">
+      <label for="url1">Frame 1</label>
+      <input type="url" id="url1" placeholder="https://...">
+      <button type="button" data-target="1">Laden</button>
+    </div>
+    <div class="frame-row">
+      <label for="url2">Frame 2</label>
+      <input type="url" id="url2" placeholder="https://...">
+      <button type="button" data-target="2">Laden</button>
+    </div>
+    <div class="frame-row">
+      <label for="url3">Frame 3</label>
+      <input type="url" id="url3" placeholder="https://...">
+      <button type="button" data-target="3">Laden</button>
+    </div>
+    <div class="frame-row">
+      <label for="url4">Frame 4</label>
+      <input type="url" id="url4" placeholder="https://...">
+      <button type="button" data-target="4">Laden</button>
+    </div>
+  </div>
+
+  <div id="main-grid">
+    <div id="left-column">
+      <iframe id="frame1" name="frame1"></iframe>
+      <iframe id="frame2" name="frame2"></iframe>
+      <iframe id="frame3" name="frame3"></iframe>
+    </div>
+    <div id="splitter"></div>
+    <iframe id="frame4" name="frame4"></iframe>
+  </div>
+
+<script>
+  (function () {
+    const STORAGE_PREFIX = 'frameViewer.url';
+
+    // Restore saved URLs into inputs and iframes on load.
+    for (let i = 1; i <= 4; i++) {
+      const saved = localStorage.getItem(STORAGE_PREFIX + i);
+      if (saved) {
+        document.getElementById('url' + i).value = saved;
+        document.getElementById('frame' + i).src = saved;
+      }
+    }
+
+    function loadFrame(index) {
+      const input = document.getElementById('url' + index);
+      const iframe = document.getElementById('frame' + index);
+      const url = input.value.trim();
+      if (!url) return;
+      iframe.src = url;
+      localStorage.setItem(STORAGE_PREFIX + index, url);
+    }
+
+    document.querySelectorAll('.frame-row button').forEach(btn => {
+      btn.addEventListener('click', () => loadFrame(btn.dataset.target));
+    });
+    document.querySelectorAll('.frame-row input').forEach(input => {
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          loadFrame(input.id.replace('url', ''));
+        }
+      });
+    });
+
+    // Panel toggle
+    const panel = document.getElementById('settings-panel');
+    document.getElementById('toggle-panel').addEventListener('click', () => {
+      panel.classList.toggle('visible');
+    });
+
+    // Splitter drag logic
+    const mainGrid = document.getElementById('main-grid');
+    const splitter = document.getElementById('splitter');
+    let dragging = false;
+
+    splitter.addEventListener('mousedown', () => {
+      dragging = true;
+      document.body.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', e => {
+      if (!dragging) return;
+      const rect = mainGrid.getBoundingClientRect();
+      let percent = ((e.clientX - rect.left) / rect.width) * 100;
+      percent = Math.min(85, Math.max(15, percent));
+      mainGrid.style.setProperty('--left-width', percent + '%');
+    });
+
+    document.addEventListener('mouseup', () => {
+      dragging = false;
+      document.body.style.userSelect = '';
+    });
+  })();
+</script>
+
+</body>
+</html>
